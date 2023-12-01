@@ -119,9 +119,9 @@ const uploadDocumentWithImageLink = async () => {
       }
     }
   }
-  console.log(/***********************************************************/)
+  console.log("***********************************************************")
   console.log("operacion completada!")
-  console.log(/***********************************************************/)
+  console.log("***********************************************************")
 };
 
 uploadDocumentWithImageLink();
