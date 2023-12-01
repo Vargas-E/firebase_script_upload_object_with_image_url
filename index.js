@@ -6,7 +6,6 @@ var products = require("./productsList.json");
 var accountData = require("./variables.json");
 const promises = fs.promises;
 
-
 /****************************************************************************************************/
 
 // NOTAS
@@ -64,16 +63,15 @@ const addData = async (document, imageName) => {
 
 // Sube archivo al bucket
 const bucketUpload = async (imageName) => {
-  bucket
-    .upload("./images/" + imageName, {
+  try {
+    await bucket.upload("./images/" + imageName, {
       destination: `imagenes_ecommerce/${imageName}`,
-    })
-    .then((a) => {
-      console.log(`${imageName} uploaded to ${bucket.name}.`);
-    })
-    .catch((err) => {
-      console.error("ERROR:", err);
     });
+    console.log(`${imageName} uploaded to ${bucket.name}.`);
+  } catch (err) {
+    console.log(`Error while uploading file ${imageName} to bucket`);
+    console.error("ERROR:", err);
+  }
 };
 
 // busca los path(nombres de archivos) en carpeta imagenes
@@ -87,15 +85,20 @@ const getPaths = async () => {
 // genera signedUrl para insertar en el objeto/producto
 const getUrl = async (imageName) => {
   const file = bucket.file(imageName);
-  const [url] = await file.getSignedUrl({
-    action: 'read',
-    expires: '03-09-2491' // Replace with the expiration date or duration you prefer
-  });
-  console.log(`Public download URL for ${imageName} generated!`);
-  return url;
-}
+  try {
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: "03-09-2491", // Replace with the expiration date or duration you prefer
+    });
+    console.log(`Public download URL for ${imageName} generated!`);
+    return url;
+  } catch (err) {
+    console.log(`Error while getting url of ${imageName}`);
+    console.log("Error:", err);
+  }
+};
 
-// Funcion que se corre para realizar la operacion. 
+// Funcion que se corre para realizar la operacion.
 const uploadDocumentWithImageLink = async () => {
   const imageNames = await getPaths();
   for (const imageName of imageNames) {
@@ -103,25 +106,26 @@ const uploadDocumentWithImageLink = async () => {
       (e) => e.title.replace(" ", "_").toLowerCase() == imageName.split(".")[0]
     );
     if (data) {
-      try {
-        await bucketUpload(imageName);
-        const url = await getUrl(`imagenes_ecommerce/${imageName}`)
-        await addData(
-          {
-            ...data,
-            imageUrl: url,
-          },
-          imageName
-        );
-      } catch (err) {
-        console.log("error with:", imageName);
-        console.log("error:", err);
-      }
+      await bucketUpload(imageName);
+      const url = await getUrl(`imagenes_ecommerce/${imageName}`);
+      await addData(
+        {
+          ...data,
+          imageUrl: url,
+        },
+        imageName
+      );
+    } else {
+      console.log(`Matching object for ${imageName} not found`);
     }
   }
-  console.log("***********************************************************")
-  console.log("operacion completada!")
-  console.log("***********************************************************")
 };
 
-uploadDocumentWithImageLink();
+uploadDocumentWithImageLink().then(() => {
+  console.log(" ")
+  console.log("***********************************************************");
+  console.log("operacion completada!");
+  console.log("***********************************************************");
+  console.log(" ")
+})
+
